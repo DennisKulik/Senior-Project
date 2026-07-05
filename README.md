@@ -57,19 +57,18 @@ High-level flow:
 flowchart TD
 
     subgraph Data_Preparation["Data Preparation"]
-        A[Synthetic Data / CSV Input]
-        B[CSV-to-Parquet Conversion]
-        C[Local Parquet Drop Folder]
+        A[Generated or Provided Parquet Files]
+        B[Local Parquet Drop Folder]
     end
 
     subgraph AWS_Cloud["AWS Cloud"]
-        D[AWS S3]
-        E[Glue Data Catalog / Athena External Table]
-        F[Athena Analytical Views]
+        C[AWS S3]
+        D[Glue Data Catalog / Athena External Table]
+        E[Athena Analytical Views]
     end
 
     subgraph Visualization["Visualization"]
-        G[Grafana Dashboards]
+        F[Grafana Dashboards]
     end
 
     A --> B
@@ -77,7 +76,6 @@ flowchart TD
     C --> D
     D --> E
     E --> F
-    F --> G
 ```
 
 ---
