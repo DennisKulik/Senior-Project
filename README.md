@@ -1,11 +1,17 @@
 
 # Submarine Telemetry Analytics Pipeline
 
-Submarine Telemetry Analytics Pipeline is a telemetry analytics pipeline for underwater vehicle run data. The project takes generated or provided telemetry, converts it into Parquet, stores it in AWS S3, defines analytical views in Athena, and displays the results through Grafana dashboards.
+Submarine Telemetry Analytics Pipeline is a cloud-based telemetry analysis project for underwater vehicle run data. It was built to process synthetic submarine telemetry, store the data in AWS S3, define reusable Athena SQL views, and visualize run-level analysis in Grafana.
+
+## Project Background
+
+This project was developed as part of a Cal Poly senior project in support of Naval Innovations, an Instructionally Related Activity focused on building an autonomous submarine.
+
+The project focused on creating a centralized pipeline for submarine telemetry analysis. As the vehicle produces more test data, manually organizing telemetry files and generating visualizations becomes harder to manage. This system was built to move telemetry into AWS, query it through Athena, and display analysis results in Grafana.
 
 ## Project Status
 
-The autonomous submarine is currently under development. The telemetry used by this project is synthetic and was generated based on expected sensor outputs and operating conditions. The pipeline and dashboards are expected to evolve as real-world telemetry becomes available.
+This repository is an archived portfolio version of a completed senior project. It preserves the project structure, SQL definitions, scripts, documentation, and screenshots from the original development environment, but is not connected to the original live deployment.
 
 The current pipeline is:
 
@@ -17,35 +23,33 @@ Synthetic telemetry / CSV input -> Parquet -> S3 -> Glue Data Catalog / Athena -
 
 Additional project documentation can be found in:
 
-* [`docs/UserGuide.md`](docs/UserGuide.md)
 * [`docs/schema.md`](docs/schema.md)
 * [`sql/`](sql/)
 
-The User Guide contains instructions for operating the system, while the schema and SQL files document the structure of the telemetry data and Athena queries.
+The schema documentation describes the telemetry data structure, while the SQL files define the Athena table and analytical views used by the pipeline.
+
 ---
 
 ## How to Use
 
-Telemetry data enters the pipeline through the local data folders. The project currently supports three input paths:
+Telemetry data enters the pipeline through the local data folders. The project currently supports two input paths:
 
-1. Add an existing Parquet telemetry file to [`data/parquet_out/`](data/parquet_out/).
+1. Add an existing Parquet telemetry file to [`data/parquet_out/`](data/parquet_out/). If starting from CSV data, use the provided CSV-to-Parquet converter before placing the output in this folder.
 2. Generate synthetic telemetry using the provided generator. Generated runs are written to [`data/parquet_out/`](data/parquet_out/) automatically.
-3. Add a telemetry CSV file to [`data/csv/`](data/csv/). CSV files are automatically converted to Parquet and written to [`data/parquet_out/`](data/parquet_out/).
 
-After Parquet files are added, pushing the updated repository triggers the AWS processing pipeline. Once processing is complete, open or refresh the Grafana dashboard to view the updated telemetry data.
+In the original project environment, updates to the Parquet data triggered the AWS processing pipeline, allowing the Athena views and Grafana dashboards to reflect the latest telemetry. 
 
 ---
 
 ## System Architecture
 
-This project is organized around moving submarine telemetry into AWS so it can be queried with Athena and visualized in Grafana.
+This project was built around moving submarine telemetry into AWS so it can be queried with Athena and visualized in Grafana.
 
-Telemetry files enter the project through local repository folders. CSV inputs are automatically converted into Parquet, and synthetic telemetry is generated as Parquet directly. All Parquet telemetry files are collected in:
+The pipeline uses Parquet as its telemetry storage format. Parquet files can either be provided directly or generated with the included synthetic telemetry generator. All Parquet outputs are collected in:
 
 [`data/parquet_out/`](data/parquet_out/)
 
-
-Updates pushed to GitHub trigger the AWS processing pipeline, which uploads telemetry data to the project S3 bucket. Athena reads the uploaded Parquet files through the `sensor_data` external table, and Grafana queries Athena views built on top of that table.
+In the original project environment, updates pushed to GitHub triggered the AWS processing pipeline, which uploaded telemetry data to the project S3 bucket. Athena read the uploaded Parquet files through the `sensor_data` external table, and Grafana queried Athena views built on top of that table.
 
 High-level flow:
 
@@ -82,7 +86,7 @@ flowchart TD
 
 - [`archive/`](archive/) – Archived and deprecated files from earlier versions of the project.
 - [`config/`](config/) – Configuration files used throughout the pipeline.
-- [`data/`](data/) – Telemetry datasets, CSV inputs, and generated Parquet outputs.
+- [`data/`](data/) – Telemetry datasets and generated Parquet outputs.
 - [`docs/`](docs/) – User guides, schema documentation, and project documentation.
 - [`scripts/`](scripts/) – Utility scripts including telemetry generation and data conversion.
 - [`sql/`](sql/) – Athena table and view definitions.
@@ -227,34 +231,34 @@ A public snapshot of the dashboard is available at:
 
 [View Interactive Dashboard Snapshot](https://denniskulik1.grafana.net/dashboard/snapshot/pqY7Z9ybOrPcKcgtzdINdYoD2qPmqH70)
 
-The snapshot provides an interactive example of the dashboard and can be viewed without requiring access to the AWS environment.
+The snapshot provides an example of the dashboard and can be viewed without requiring access to the AWS environment.
 
 ### Future Improvements
 
-The current dashboards operate on synthetic telemetry data generated from expected submarine operating conditions. As real-world telemetry becomes available, additional visualizations and analytics may be added to better reflect actual vehicle performance and operational behavior.
+The dashboards currently use synthetic telemetry data generated from expected submarine operating conditions. If real telemetry becomes available, the synthetic data model and Athena views could be updated to better reflect actual vehicle behavior.
 
 ---
 
-## How to Reproduce
+## Recreating the Pipeline
 
-Start by adding telemetry data using one of the three accepted input paths described above. Once Parquet files are available in [`data/parquet_out/`](data/parquet_out/), the AWS processing pipeline uploads them to the S3 `curated/` prefix.
+This repository preserves the code, SQL definitions, and documentation used by the original project environment. The original AWS/Grafana deployment is not maintained in this portfolio version, but the pipeline can be recreated with a new AWS and Grafana setup.
 
-Create the main Athena external table by running [`sql/make_sensor_data.sql`](sql/make_sensor_data.sql).
+Start by adding Parquet telemetry data to [`data/parquet_out/`](data/parquet_out/). These files can be provided directly or generated with the included synthetic telemetry generator.
 
+Upload the Parquet files to an S3 bucket/prefix configured for the recreated pipeline.
 
-This creates the `sensor_data` table over the Parquet telemetry files stored in S3.
+Create the main Athena external table by running [`sql/make_sensor_data.sql`](sql/make_sensor_data.sql). This creates the `sensor_data` table over the Parquet telemetry files stored in S3.
 
 After `sensor_data` exists, run the remaining SQL files in [`sql/`](sql/) to create or recreate the Athena views.
 
-Open or refresh the Grafana dashboard. Grafana must already be connected to Athena as a data source. Once connected, it queries the Athena views and displays the updated telemetry analysis.
-
-For more detailed operating instructions, see the user guide: [`docs/UserGuide.md`](docs/UserGuide.md).
+Connect Grafana to Athena as a data source, then create or import dashboards that query the Athena views.
 
 ---
 
 ## Notes
 
 * The current telemetry data is synthetic and does not represent real vehicle telemetry.
+* The original AWS/Grafana deployment is not maintained in this portfolio version.
 * Athena views are stored SQL definitions and recompute when queried.
 * Grafana is used for visualization; analysis logic lives in Athena SQL views.
 * Deprecated DuckDB files and older scripts are retained in `archive/` for reference but are not part of the current pipeline.
