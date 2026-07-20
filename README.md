@@ -1,270 +1,183 @@
-
 # Submarine Telemetry Analytics Pipeline
 
-Submarine Telemetry Analytics Pipeline is a cloud-based telemetry analysis project for underwater vehicle run data. It was built to process synthetic submarine telemetry, store the data in AWS S3, define reusable Athena SQL views, and visualize run-level analysis in Grafana.
+An end-to-end analytics pipeline that turns underwater vehicle telemetry into queryable, run-level insights using Python, Parquet, AWS, SQL, and Grafana.
 
-## Project Background
+Built as a Cal Poly senior project in support of Naval Innovations, an Instructionally Related Activity developing an autonomous submarine. This portfolio repository preserves the data model, synthetic-data tooling, Athena analytics, and dashboard evidence from the completed project.
 
-This project was developed as part of a Cal Poly senior project in support of Naval Innovations, an Instructionally Related Activity focused on building an autonomous submarine.
+> **Portfolio status:** The original AWS and Grafana deployment is no longer maintained. The included data is synthetic and does not represent real vehicle telemetry.
 
-The project focused on creating a centralized pipeline for submarine telemetry analysis. As the vehicle produces more test data, manually organizing telemetry files and generating visualizations becomes harder to manage. This system was built to move telemetry into AWS, query it through Athena, and display analysis results in Grafana.
+[View the Grafana dashboard snapshot](https://denniskulik1.grafana.net/dashboard/snapshot/pqY7Z9ybOrPcKcgtzdINdYoD2qPmqH70)
 
-## Project Status
+![Grafana telemetry dashboard showing run-level sensor plots and a data preview](docs/images/telemetry_dashboard.png)
 
-This repository is an archived portfolio version of a completed senior project. It preserves the project structure, SQL definitions, scripts, documentation, and screenshots from the original development environment, but is not connected to the original live deployment.
+## What this project demonstrates
 
-The current pipeline is:
+- Designed a cloud analytics path from CSV/Parquet files through Amazon S3, AWS Glue, Athena, and Grafana.
+- Modeled time-series telemetry for battery, depth, humidity, and three-axis IMU measurements.
+- Built a reproducible synthetic-data generator with configurable dive profiles and seeded noise.
+- Used Athena window functions and common table expressions to calculate energy use, dive phases, voltage-sag events, and motion anomalies.
+- Kept analytical logic in version-controlled SQL instead of only in cloud consoles or dashboard panels.
+- Used columnar Parquet storage and a serverless query layer to avoid operating a dedicated database.
 
-```text
-Synthetic telemetry / CSV input -> Parquet -> S3 -> Glue Data Catalog / Athena -> Grafana
-```
+## Technology
 
-## Documentation
+| Layer | Tools | Purpose |
+| --- | --- | --- |
+| Data generation and conversion | Python, NumPy, pandas, PyArrow | Generate test runs and convert CSV telemetry to Parquet |
+| Storage | Parquet, Amazon S3 | Store analysis-ready telemetry efficiently |
+| Catalog and query | AWS Glue Data Catalog, Amazon Athena, SQL | Expose a common schema and compute reusable views |
+| Visualization | Grafana | Filter and inspect telemetry by run |
 
-Additional project documentation can be found in:
-
-* [`docs/schema.md`](docs/schema.md)
-* [`sql/`](sql/)
-
-The schema documentation describes the telemetry data structure, while the SQL files define the Athena table and analytical views used by the pipeline.
-
----
-
-## How to Use
-
-Telemetry data enters the pipeline through the local data folders. The project currently supports two input paths:
-
-1. Add an existing Parquet telemetry file to [`data/parquet_out/`](data/parquet_out/). If starting from CSV data, use the provided CSV-to-Parquet converter before placing the output in this folder.
-2. Generate synthetic telemetry using the provided generator. Generated runs are written to [`data/parquet_out/`](data/parquet_out/) automatically.
-
-In the original project environment, updates to the Parquet data triggered the AWS processing pipeline, allowing the Athena views and Grafana dashboards to reflect the latest telemetry. 
-
----
-
-## System Architecture
-
-This project was built around moving submarine telemetry into AWS so it can be queried with Athena and visualized in Grafana.
-
-The pipeline uses Parquet as its telemetry storage format. Parquet files can either be provided directly or generated with the included synthetic telemetry generator. All Parquet outputs are collected in:
-
-[`data/parquet_out/`](data/parquet_out/)
-
-In the original project environment, updates pushed to GitHub triggered the AWS processing pipeline, which uploaded telemetry data to the project S3 bucket. Athena read the uploaded Parquet files through the `sensor_data` external table, and Grafana queried Athena views built on top of that table.
-
-High-level flow:
+## Architecture
 
 ```mermaid
-flowchart TD
-
-    subgraph Data_Preparation["Data Preparation"]
-        A[Synthetic Data / CSV Input]
-        B[CSV-to-Parquet Conversion]
-        C[Local Parquet Drop Folder]
-    end
-
-    subgraph AWS_Cloud["AWS Cloud"]
-        D[AWS S3]
-        E[Glue Data Catalog / Athena External Table]
-        F[Athena Analytical Views]
-    end
-
-    subgraph Visualization["Visualization"]
-        G[Grafana Dashboards]
-    end
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    F --> G
+flowchart LR
+    A["Synthetic telemetry or CSV"] --> B["Python conversion"]
+    B --> C["Parquet"]
+    C --> D["Amazon S3"]
+    D --> E["Glue catalog + Athena table"]
+    E --> F["Athena analytical views"]
+    F --> G["Grafana dashboard"]
 ```
 
----
+Parquet files form the contract between local data preparation and the cloud analytics layer. Athena exposes them through the `sensor_data` external table; the SQL views then provide stable, dashboard-ready outputs. This separation keeps ingestion, analysis, and presentation independently replaceable.
 
-## Repository Structure
+## Run the local data tools
 
-- [`archive/`](archive/) – Archived and deprecated files from earlier versions of the project.
-- [`config/`](config/) – Configuration files used throughout the pipeline.
-- [`data/`](data/) – Telemetry datasets and generated Parquet outputs.
-- [`docs/`](docs/) – User guides, schema documentation, and project documentation.
-- [`scripts/`](scripts/) – Utility scripts including telemetry generation and data conversion.
-- [`sql/`](sql/) – Athena table and view definitions.
-- [`src/`](src/) – Main project source code.
-- [`README.md`](README.md) – Project overview and setup instructions.
-- [`pyproject.toml`](pyproject.toml) – Python project configuration and dependencies.
----
+### Prerequisites
 
-## Data Model / Schema
+- Python 3.9 or newer
+- `numpy`, `pandas`, and `pyarrow`
 
-The main Athena table is:
+Clone the repository and install the local tooling dependencies:
+
+```bash
+git clone https://github.com/DennisKulik/Senior-Project.git
+cd Senior-Project
+python -m venv .venv
+```
+
+Activate the environment on macOS or Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Or on Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Then install the dependencies:
+
+```bash
+python -m pip install numpy pandas pyarrow
+```
+
+### Generate synthetic telemetry
+
+```bash
+python scripts/generate_synth_data.py
+```
+
+The generator creates six deterministic runs in `scripts/parquet_out/synth_runs/`. Each run follows a different depth profile and contains correlated depth, current, voltage, humidity, and IMU measurements. Change `RUNS` or `DEFAULT_CONFIG` in the script to model other scenarios.
+
+The repository also includes the six portfolio sample runs in [`data/parquet_out/`](data/parquet_out/).
+
+### Convert a CSV file to Parquet
+
+Run the converter as a module from the repository root:
+
+```bash
+python -m scripts.csv_to_parquet path/to/input.csv --out data/parquet_out/my_run.parquet
+```
+
+The converter preserves the input column order, parses timestamp-like identifier fields, and can drop rows where every sensor value is missing:
+
+```bash
+python -m scripts.csv_to_parquet path/to/input.csv \
+  --out data/parquet_out/my_run.parquet \
+  --drop-all-nan-rows
+```
+
+## Recreate the AWS analytics layer
+
+The cloud deployment is not included as infrastructure-as-code, so these steps require your own AWS and Grafana configuration:
+
+1. Upload the generated or included Parquet files to an S3 prefix.
+2. Update the `LOCATION` in [`sql/make_sensor_data.sql`](sql/make_sensor_data.sql) to that prefix.
+3. Run `make_sensor_data.sql` in Athena to create the `sensor_data` external table.
+4. Run the remaining files in [`sql/`](sql/) to create the analytical views.
+5. Configure Grafana's Athena data source and build panels against those views.
+
+The original deployment used S3 for both curated telemetry and Athena query results, with table metadata stored in the Glue Data Catalog.
+
+## Analytics implemented
+
+| SQL view | Technique | Result |
+| --- | --- | --- |
+| [`energy_per_run`](sql/energy_per_run.sql) | Time-delta integration of voltage x current | Estimated watt-hours consumed per run |
+| [`depth_run_summary`](sql/dive_profile_analysis.sql) | Lagged samples and vertical-rate calculation | Maximum/average depth, ascent/descent rate, and time near maximum depth |
+| [`voltage_sag_events`](sql/voltage_sag_events.sql) | Rolling voltage and current baselines | High-load events with simultaneous voltage drop and current spike |
+| [`run_phase_segments`](sql/run_phase_segments.sql) | Rate thresholds and row-level classification | Surface, descending, holding-depth, and ascending labels |
+| [`motion_anomalies`](sql/imu_motion_anomaly.sql) | Rolling acceleration magnitude z-score | IMU samples that deviate sharply from recent motion |
+| [`motion_zscore_summary`](sql/motion_zscore_summary.sql) | Per-run percentile aggregation | Overall motion variability, including p95 and p99 deviation |
+
+The table schema is documented in [`docs/schema.md`](docs/schema.md), and shorter descriptions of the analytical outputs are in [`docs/query_descriptions.md`](docs/query_descriptions.md).
+
+### Dive and battery analysis
+
+The dashboard relates voltage to time, current, and depth while displaying the selected run's dive profile. These views make load-related voltage behavior easier to distinguish from normal time-based battery drain.
+
+![Grafana panels comparing battery voltage with time, current, and depth alongside the run's depth profile](docs/images/grafana_dive_analysis.png)
+
+### Phase-level analysis
+
+Athena's row-level phase classifications support higher-level comparisons of time, current, voltage, and energy across surface, descending, holding-depth, and ascending behavior.
+
+![Grafana panels comparing time, current, voltage, and energy across submarine run phases](docs/images/grafana_phase_analysis.png)
+
+## Data model
+
+Each row in `sensor_data` represents one sample from one vehicle run:
+
+| Field group | Columns |
+| --- | --- |
+| Identity | `timestamp_utc`, `seq`, `run_id` |
+| Electrical | `battery_voltage_v`, `battery_current_a` |
+| Environment | `depth_m`, `humidity_pct` |
+| Motion | `imu_ax_mps2`, `imu_ay_mps2`, `imu_az_mps2` |
+
+`run_id` partitions the analytical window functions so calculations do not cross logging sessions. `timestamp_utc` and `seq` provide deterministic ordering within a run.
+
+## Repository layout
 
 ```text
-sensor_data
+data/parquet_out/       Six sample telemetry runs
+docs/                   Schema notes, query notes, and deployment screenshots
+scripts/                Synthetic-data generator and CSV-to-Parquet converter
+sql/                    Athena external-table and view definitions
+src/utils/              Shared local path definitions
+archive/                Deprecated experiments retained for project history
 ```
 
-Each row represents one telemetry sample from a run.
+## Design decisions and limitations
 
-Key identifier columns:
+- **Synthetic data:** The generator enabled development before real submarine telemetry was available. Its signal relationships approximate expected behavior; they are not a physics simulation or validation dataset.
+- **Parquet over CSV in the analytics layer:** Columnar storage reduces unnecessary reads and preserves useful data types for Athena.
+- **Views over materialized outputs:** The analysis stays simple to reproduce and always reflects the underlying telemetry, at the cost of recomputing when queried.
+- **Threshold-based event detection:** Voltage-sag, phase, and anomaly thresholds are transparent and easy to tune, but would need validation against real vehicle data.
+- **Archived deployment:** Cloud resources, Grafana provisioning, CI/CD configuration, and infrastructure-as-code are not included, so the repository documents rather than automatically recreates the full hosted system.
 
-* `timestamp_utc`
-* `seq`
-* `run_id`
+## Evidence from the original deployment
 
-Main sensor columns include:
+| S3 telemetry prefix | Glue/Athena schema | Athena queries |
+| --- | --- | --- |
+| ![Parquet objects stored in Amazon S3](docs/images/s3_bucket.png) | ![Telemetry fields in the AWS Glue table](docs/images/glue_schema.png) | ![Saved analytics running in Amazon Athena](docs/images/athena_queries.png) |
 
-* `battery_voltage_v`
-* `battery_current_a`
-* `depth_m`
-* `humidity_pct`
-* `imu_ax_mps2`
-* `imu_ay_mps2`
-* `imu_az_mps2`
+## Background and reference
 
-For the full schema, see [`docs/schema.md`](docs/schema.md).
+The generator was informed by published underwater robotics dataset work, particularly the VAROS synthetic underwater dataset. VAROS helped guide realistic sensor ranges and run behavior; no VAROS data is included here.
 
----
-
-## AWS Setup
-
-The project uses AWS S3 to store Parquet telemetry data and Amazon Athena to query it.
-
-Telemetry Parquet files are stored in S3 under:
-
-```text
-s3://senior-project-data-370852768002-us-east-1-an/curated/
-```
-![S3 Bucket/Prefix Structure](docs/images/s3_bucket.png)
-
-Athena reads the Parquet data through an external table named `sensor_data`. The table metadata is stored in the Glue Data Catalog, allowing Athena to treat the files in S3 as a queryable table.
-
-![Glue Table Schema](docs/images/glue_schema.png)
-
-Main Athena database:
-
-```text
-senior_project
-```
-
-Main Athena table:
-
-```text
-sensor_data
-```
-
-Athena views are defined on top of `sensor_data` and are used as the query layer for Grafana panels.
-
-![Athena Queries](docs/images/athena_queries.png)
-
-Athena query results are written to:
-
-```text
-s3://senior-project-data-370852768002-us-east-1-an/athena-results/
-```
-
----
-
-## Athena SQL Views
-
-The project stores Athena SQL definitions in the repository so the views can be recreated if needed. This prevents the query logic from existing only inside the AWS console.
-
-The SQL files are located in [`sql/`](sql/).
-
-The main Athena views include:
-
-### Energy Consumption Per Run
-
-Estimates total battery energy usage for each run in watt-hours using current and voltage telemetry. The output is grouped by `run_id`.
-
-### Dive / Depth Summary
-
-Uses `depth_m` over time to summarize depth behavior for each run, including maximum depth, average depth, vertical movement rate, and time spent near maximum depth.
-
-### Voltage Sag Events
-
-Finds points where voltage drops while current increases. This is used to identify possible high-load moments in the battery data.
-
-### Phase Segmentation
-
-Labels telemetry rows as `surface`, `descending`, `holding_depth`, or `ascending` based on depth and vertical movement rate. This supports phase-based Grafana panels such as time spent per phase and average current/voltage per phase.
-
-### IMU Motion Anomaly Detection
-
-Uses acceleration data from the IMU to estimate motion intensity and flag unusually large deviations from recent motion behavior.
-
-### IMU Motion Z-Score Summary
-
-Summarizes rolling acceleration z-score behavior for each run, including maximum deviation, average deviation, and high-percentile deviation values. This helps characterize overall motion variability even when no individual samples cross the anomaly threshold.
-
----
-
-## Grafana Dashboards
-
-Grafana serves as the primary visualization layer for the project. Dashboard panels query Athena views built on top of telemetry data stored in AWS S3, allowing users to analyze submarine telemetry without directly interacting with the underlying datasets.
-
-The dashboards are intended to help users:
-
-* Monitor sensor outputs
-* Review telemetry from individual runs
-* Analyze expected vehicle performance
-* Identify trends and anomalies in collected data
-* Compare telemetry metrics across runs
-
-### Dashboard Overview
-
-![Telemetry Dashboard](docs/images/telemetry_dashboard.png)
-
-The dashboard provides access to telemetry generated during a run. Users can inspect battery measurements, depth, humidity, and IMU sensor outputs through both graphical and tabular views. The dashboard is filtered by run ID, with every panel updating.
-
-Current dashboard visualizations include telemetry plots for:
-
-* Battery voltage
-* Battery current
-* Depth
-* Humidity
-* IMU acceleration data
-* Run-specific telemetry tables
-
-### Interactive Dashboard Snapshot
-
-A public snapshot of the dashboard is available at:
-
-[View Interactive Dashboard Snapshot](https://denniskulik1.grafana.net/dashboard/snapshot/pqY7Z9ybOrPcKcgtzdINdYoD2qPmqH70)
-
-The snapshot provides an example of the dashboard and can be viewed without requiring access to the AWS environment.
-
-### Future Improvements
-
-The dashboards currently use synthetic telemetry data generated from expected submarine operating conditions. If real telemetry becomes available, the synthetic data model and Athena views could be updated to better reflect actual vehicle behavior.
-
----
-
-## Recreating the Pipeline
-
-This repository preserves the code, SQL definitions, and documentation used by the original project environment. The original AWS/Grafana deployment is not maintained in this portfolio version, but the pipeline can be recreated with a new AWS and Grafana setup.
-
-Start by adding Parquet telemetry data to [`data/parquet_out/`](data/parquet_out/). These files can be provided directly or generated with the included synthetic telemetry generator.
-
-Upload the Parquet files to an S3 bucket/prefix configured for the recreated pipeline.
-
-Create the main Athena external table by running [`sql/make_sensor_data.sql`](sql/make_sensor_data.sql). This creates the `sensor_data` table over the Parquet telemetry files stored in S3.
-
-After `sensor_data` exists, run the remaining SQL files in [`sql/`](sql/) to create or recreate the Athena views.
-
-Connect Grafana to Athena as a data source, then create or import dashboards that query the Athena views.
-
----
-
-## Notes
-
-* The current telemetry data is synthetic and does not represent real vehicle telemetry.
-* The original AWS/Grafana deployment is not maintained in this portfolio version.
-* Athena views are stored SQL definitions and recompute when queried.
-* Grafana is used for visualization; analysis logic lives in Athena SQL views.
-* Deprecated DuckDB files and older scripts are retained in `archive/` for reference but are not part of the current pipeline.
-
-## References
-
-The synthetic telemetry generator was informed by published underwater robotics dataset work, especially the VAROS synthetic underwater dataset. VAROS was used as a reference for modeling realistic sensor ranges and underwater run behavior, but no VAROS data is included in this repository.
-
-Peder Georg Olofsson Zwilgmeyer, Mauhing Yip, Andreas Langeland Teigen, Rudolf Mester, and Annette Stahl. “The VAROS Synthetic Underwater Data Set: Towards Realistic Multi-Sensor Underwater Data With Ground Truth.” Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) Workshops, 2021, pp. 3722–3730.
+P. G. O. Zwilgmeyer, M. Yip, A. L. Teigen, R. Mester, and A. Stahl, "The VAROS Synthetic Underwater Data Set: Towards Realistic Multi-Sensor Underwater Data With Ground Truth," *ICCV Workshops*, 2021, pp. 3722-3730.
